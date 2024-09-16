@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpbin
+  labels:
+    app: httpbin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpbin
+  template:
+    metadata:
+      labels:
+        app: httpbin
+    spec:
+      containers:
+      - image: "kennethreitz/httpbin"
+#      - image: "mendhak/http-https-echo"
+        name: httpbin-image
+        ports:
+        - containerPort: 80
+          protocol: TCP
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin
+spec:
+  selector:
+    app: httpbin
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin
+  annotations:
+   # kubernetes.io/ingress.class: azure/application-gateway
+    appgw.ingress.kubernetes.io/appgw-ssl-profile: "myclientcertprofile"
+    appgw.ingress.kubernetes.io/override-frontend-port: "443"
+    appgw.ingress.kubernetes.io/rewrite-rule-set-custom-resource: my-rewrite-rule-set-custom-resource
+spec:
+  ingressClassName: azure-application-gateway
+  tls:
+    - secretName: frontend-tls
+      hosts:
+        - dev.aksingress.com
+  rules:
+  - host: dev.aksingress.com
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+        pathType: Exact
+---
+apiVersion: appgw.ingress.azure.io/v1beta1
+kind: AzureApplicationGatewayRewrite
+metadata:
+  name: my-rewrite-rule-set-custom-resource
+spec:
+  rewriteRules:
+  - name: rule1
+    ruleSequence: 21
+
+    conditions:
+    - ignoreCase: false
+      negate: false
+      variable: http_req_Host
+      pattern: dev.aksingress.com
+
+    actions:
+      requestHeaderConfigurations:
+      - actionType: set
+        headerName: client-certificate
+        headerValue: "{var_client_certificate}"
+
+      - actionType: set
+        headerName: client-certificate-end-date
+        headerValue: "{var_client_certificate_end_date}"
+
+      - actionType: set
+        headerName: client-certificate-fingerprint
+        headerValue: "{var_client_certificate_fingerprint}"
+
+      - actionType: set
+        headerName: client-certificate-issuer
+        headerValue: "{var_client_certificate_issuer}"
+
+      - actionType: set
+        headerName: client-certificate-serial
+        headerValue: "{var_client_certificate_serial}"
+
+      - actionType: set
+        headerName: client-certificate-start-date
+        headerValue: "{var_client_certificate_start_date}"
+
+      - actionType: set
+        headerName: client-certificate-verification
+        headerValue: "{var_client_certificate_verification}"
+
+
+  - name: rule2
+    ruleSequence: 22
+
+    conditions:
+    - ignoreCase: true
+      negate: false
+      variable: var_http_status
+      pattern: "302"
+
+    actions:
+      responseHeaderConfigurations:
+      - actionType: set
+        headerName: client-certificate
+        headerValue: "{var_client_certificate}"
+
+      - actionType: set
+        headerName: client-certificate-end-date
+        headerValue: "{var_client_certificate_end_date}"
+
+      - actionType: set
+        headerName: client-certificate-fingerprint
+        headerValue: "{var_client_certificate_fingerprint}"
+
+      - actionType: set
+        headerName: client-certificate-issuer
+        headerValue: "{var_client_certificate_issuer}"
+
+      - actionType: set
+        headerName: client-certificate-serial
+        headerValue: "{var_client_certificate_serial}"
+
+      - actionType: set
+        headerName: client-certificate-start-date
+        headerValue: "{var_client_certificate_start_date}"
+
+      - actionType: set
+        headerName: client-certificate-verification
+        headerValue: "{var_client_certificate_verification}"
+
+
+
+
